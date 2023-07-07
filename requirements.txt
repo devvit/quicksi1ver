@@ -1,0 +1,5 @@
+Flask
+mercurial
+Pygments
+python-dotenv
+wsgi-basic-auth
