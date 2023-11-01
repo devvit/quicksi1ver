@@ -8,7 +8,8 @@ from mercurial.hgweb import hgweb
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.wrappers import Response
 from flask import Flask
-import subprocess
+# import subprocess
+import shutil
 import os
 from dotenv import load_dotenv
 
@@ -77,7 +78,8 @@ def api_hginit(dest):
 
 @api.route('/rm/<string:dest>')
 def api_rm(dest):
-    subprocess.call(['rm', '-rf', os.path.join(repo_folder, dest)])
+    # subprocess.call(['rm', '-rf', os.path.join(repo_folder, dest)])
+    shutil.rmtree(os.path.join(repo_folder, dest), ignore_errors=True)
     hgapp.refresh()
     return dest
 
