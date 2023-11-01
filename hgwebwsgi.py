@@ -8,7 +8,6 @@ from mercurial.hgweb import hgweb
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.wrappers import Response
 from flask import Flask
-# import subprocess
 import shutil
 import os
 from dotenv import load_dotenv
@@ -48,11 +47,21 @@ highlightonlymatchfilename = False
 """ % format(project_folder)
 
 default_page = """
+<!DOCTYPE html>
 <html>
+<head>
+<style>
+* { font-family: sans-serif; }
+</style>
+</head>
 <body>
-<h1>simple site</h1>
-<p><a href="/">home</a></p>
-<p><a href="/hg">hg</a></p>
+
+<h1>WELCOME</h1>
+
+<p><a href="/">HOME</a></p>
+
+<p><a href="/hg">HG</a></p>
+
 </body>
 </html>
 """
@@ -78,7 +87,6 @@ def api_hginit(dest):
 
 @api.route('/rm/<string:dest>')
 def api_rm(dest):
-    # subprocess.call(['rm', '-rf', os.path.join(repo_folder, dest)])
     shutil.rmtree(os.path.join(repo_folder, dest), ignore_errors=True)
     hgapp.refresh()
     return dest
