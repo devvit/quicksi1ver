@@ -38,7 +38,7 @@ baseurl = /hg
 allow_push = *
 push_ssl = False
 allow_archive = gz, zip
-style = gitweb
+style = monoblue
 pygments_style = colorful
 highlightonlymatchfilename = False
 
@@ -57,9 +57,7 @@ default_page = """
 <body>
 
 <h1>WELCOME</h1>
-
 <p><a href="/">HOME</a></p>
-
 <p><a href="/hg">HG</a></p>
 
 </body>
