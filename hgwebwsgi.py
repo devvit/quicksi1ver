@@ -5,10 +5,11 @@
 from mercurial import demandimport, commands
 from wsgi_basic_auth import BasicAuth
 from mercurial.hgweb import hgweb
-from werkzeug.serving import run_simple
+
+# from werkzeug.serving import run_simple
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.wrappers import Response
-from flask import Flask, render_template_string,request,redirect,url_for
+from flask import Flask, render_template_string, request, redirect, url_for
 import shutil
 import os
 from dotenv import load_dotenv
@@ -156,7 +157,8 @@ myapp.config.update(
         "STORAGE_KEY": "",
         "STORAGE_SECRET": "",
         "STORAGE_CONTAINER": os.path.join(project_folder, "_files"),
-        "STORAGE_SERVER": True
+        "STORAGE_SERVER": True,
+        # "STORAGE_SERVER_URL": "/files",
     }
 )
 storage = Storage()
@@ -199,7 +201,7 @@ application = DispatcherMiddleware(
     Response(default_page, status=200, headers={"Content-Type": "text/html"}),
     {"/hg": hgapp, "/my": myapp},
 )
-# application = BasicAuth(application)
+application = BasicAuth(application)
 
-if __name__ == "__main__":
-    run_simple('0.0.0.0',8080,application,use_debugger=True)
+# if __name__ == "__main__":
+#     run_simple("0.0.0.0", 8080, application, use_debugger=True)
