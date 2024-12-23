@@ -1,7 +1,7 @@
-Flask
-Flask-Cloudy
-Pygments
-fasteners
-mercurial
-python-dotenv
-wsgi-basic-auth
+Flask-Cloudy==1.1.0
+Flask==2.1.2
+Pygments==2.12.0
+fasteners==0.19
+mercurial==6.3.2
+python-dotenv==0.21.1
+wsgi-basic-auth==1.1.0
