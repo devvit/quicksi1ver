@@ -1,5 +1,6 @@
 Flask
-mercurial
+Flask-Cloudy
 Pygments
+mercurial
 python-dotenv
 wsgi-basic-auth
