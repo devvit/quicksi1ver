@@ -178,9 +178,14 @@ def view(object_name):
 
 @myapp.route("/upload", methods=["POST"])
 def upload():
-    file = request.files.get("file")
-    my_object = storage.upload(file)
-    return redirect(url_for("view", object_name=my_object.name))
+    try:
+        file = request.files.get("file")
+        # my_object = storage.upload(file)
+        # return redirect(url_for("view", object_name=my_object.name))
+        storage.upload(file)
+    except Exception:
+        pass
+    return redirect(url_for("index"))
 
 
 @myapp.route("/hginit/<string:dest>")
