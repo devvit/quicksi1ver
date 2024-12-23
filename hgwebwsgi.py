@@ -5,9 +5,10 @@
 from mercurial import demandimport, commands
 from wsgi_basic_auth import BasicAuth
 from mercurial.hgweb import hgweb
+from werkzeug.serving import run_simple
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.wrappers import Response
-from flask import Flask, render_template_string, url_for
+from flask import Flask, render_template_string,request,redirect,url_for
 import shutil
 import os
 from dotenv import load_dotenv
@@ -78,6 +79,9 @@ index_page = """
 
 <h1>Flask-Cloudy</h1>
 
+<p>
+<a href="/">HOME</a>
+</p>
 
 <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
     Select image to upload:
@@ -119,8 +123,14 @@ view_page = """
 <body>
 
 <h1>Flask-Cloudy: View File</h1>
-<a href="{{ url_for('index') }}"><- Home</a>
-<br> <br>
+
+
+<p>
+<a href="/">HOME</a>
+<span> | </span>
+<a href="{{ url_for('index') }}"><- Index</a>
+</p>
+
 
 Name: {{ obj.name }} <br><br>
 Size: {{ obj.size }} bytes <br><br>
@@ -146,8 +156,7 @@ myapp.config.update(
         "STORAGE_KEY": "",
         "STORAGE_SECRET": "",
         "STORAGE_CONTAINER": os.path.join(project_folder, "_files"),
-        "STORAGE_SERVER": True,
-        # "STORAGE_SERVER_URL": "/files",
+        "STORAGE_SERVER": True
     }
 )
 storage = Storage()
@@ -155,7 +164,7 @@ storage.init_app(myapp)
 
 
 @myapp.route("/")
-def hello_world():
+def index():
     return render_template_string(index_page, storage=storage)
 
 
@@ -163,6 +172,13 @@ def hello_world():
 def view(object_name):
     obj = storage.get(object_name)
     return render_template_string(view_page, obj=obj)
+
+
+@myapp.route("/upload", methods=["POST"])
+def upload():
+    file = request.files.get("file")
+    my_object = storage.upload(file)
+    return redirect(url_for("view", object_name=my_object.name))
 
 
 @myapp.route("/hginit/<string:dest>")
@@ -183,4 +199,7 @@ application = DispatcherMiddleware(
     Response(default_page, status=200, headers={"Content-Type": "text/html"}),
     {"/hg": hgapp, "/my": myapp},
 )
-application = BasicAuth(application)
+# application = BasicAuth(application)
+
+if __name__ == "__main__":
+    run_simple('0.0.0.0',8080,application,use_debugger=True)
