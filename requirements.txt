@@ -3,4 +3,5 @@ Flask-Cloudy
 Pygments
 mercurial
 python-dotenv
+fasteners
 wsgi-basic-auth
