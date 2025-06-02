@@ -1,5 +1,7 @@
 Flask-Cloudy==1.1.0
+Flask-SQLAlchemy
 Flask==2.1.2
+PyMySQL
 Pygments==2.12.0
 fasteners==0.19
 mercurial==6.3.2
