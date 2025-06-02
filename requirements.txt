@@ -1,9 +1,9 @@
-Flask-Cloudy==1.1.0
+Flask-Cloudy
 Flask-SQLAlchemy
-Flask==2.1.2
+Flask
 PyMySQL
-Pygments==2.12.0
-fasteners==0.19
-mercurial==6.3.2
-python-dotenv==0.21.1
-wsgi-basic-auth==1.1.0
+Pygments
+fasteners
+mercurial
+python-dotenv
+wsgi-basic-auth
