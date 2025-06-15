@@ -8,13 +8,14 @@ from mercurial.hgweb import hgweb
 
 # from werkzeug.serving import run_simple
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from werkzeug.wrappers import Response
-from flask import Flask, render_template_string, request, redirect, url_for, jsonify
+from flask import Flask, request, redirect, url_for
 import shutil
 import os
 from dotenv import load_dotenv
-from flask_cloudy import Storage
+from flask import render_template_string
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+
 
 project_folder = os.path.expanduser("~/.hgweb")
 web_folder = os.path.join(project_folder, "_web")  # adjust as appropriate
@@ -51,221 +52,160 @@ highlightonlymatchfilename = False
 / = %s/_hg/*
 """ % format(project_folder)
 
-default_page = """
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bootstrap demo</title>
-<link href="https://testingcf.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous">
-</head>
-<body>
-
-<h1>WELCOME</h1>
-<div style="float: right;">
-<a href="/">HOME</a>
-<a href="/hg">HG</a>
-<a href="/my">FILES</a>
-</div>
-
-</body>
-</html>
-"""
-
-index_page = """
-<!DOCTYPE html>
-<html>
-<head lang="en">
-    <meta charset="UTF-8">
-    <title>Flask-Cloudy</title>
-</head>
-<body>
-
-<h1>Flask-Cloudy</h1>
-
-<p>
-<a href="/">HOME</a>
-</p>
-
-<form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
-    Select image to upload:
-    <input type="file" name="file" id="fileToUpload"> <br>
-    <input type="submit" value="Upload File" name="submit">
-</form>
-
-<hr>
-
-<h3>List of files available on the storage:</h3>
-
-<table>
-    <thead>
-        <th>Name</th>
-        <th>Size</th>
-    </thead>
-    <tbody>
-        {% for obj in storage %}
-        <tr>
-            <td><a href="{{ url_for('view', object_name=obj.name) }}">{{ obj.name }}</a></td>
-            <td>{{ obj.size }} bytes</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-
-</table>
-
-</body>
-</html>
-"""
-
-view_page = """
-<!DOCTYPE html>
-<html>
-<head lang="en">
-    <meta charset="UTF-8">
-    <title>Flask-Cloudy</title>
-</head>
-<body>
-
-<h1>Flask-Cloudy: View File</h1>
-
-
-<p>
-<a href="/">HOME</a>
-<span> | </span>
-<a href="{{ url_for('index') }}"><- Index</a>
-</p>
-
-
-Name: {{ obj.name }} <br><br>
-Size: {{ obj.size }} bytes <br><br>
-
-Short url: {{ obj.short_url }} <br><br>
-
-View file: <a href="{{ obj.url }}">{{ obj.url }}</a> <br><br>
-
-{% set download_url = obj.download_url() %}
-Download: <a href="{{ download_url }}">{{ download_url }}</a> <br><br>
-</body>
-</html>
-"""
-
 with open(config, "w") as f:
     f.write(hgconfig)
 
 hgapp = hgweb(config)
 myapp = Flask(__name__)
-myapp.config.update(
-    {
-        "STORAGE_PROVIDER": "LOCAL",
-        "STORAGE_KEY": "",
-        "STORAGE_SECRET": "",
-        "STORAGE_CONTAINER": os.path.join(project_folder, "_files"),
-        "STORAGE_SERVER": True,
-        # "STORAGE_SERVER_URL": "/files",
-    }
-)
-storage = Storage()
-storage.init_app(myapp)
-
 myapp.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DB_URI")
 db = SQLAlchemy(myapp)
 
 
-class Item(db.Model):
-    __tablename__ = "items"
-
-    id = db.Column(db.BigInteger, primary_key=True)
-    data = db.Column(db.String(255), nullable=False)
-
-    def to_dict(self):
-        return {"id": self.id, "data": self.data}
+class Project(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    created = db.Column(db.DateTime, default=datetime.utcnow)
+    tasks = db.relationship("Task", backref="project", cascade="all, delete-orphan")
 
 
-with myapp.app_context():
-    db.create_all()
+class Task(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("project.id"), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    done = db.Column(db.Boolean, default=False)
+    created = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+def render_with_layout(content, **context):
+    layout = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project Manager</title>
+    <link href="https://testingcf.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous">
+    </head>
+    <body>
+      <h1>🗂 Project Manager<sup>
+      <a href="/">HOME</a>
+      <a href="/hg">HG</a>
+      </sup></h1>
+      {{ content|safe }}
+    </body></html>
+    """
+    inner = render_template_string(content, **context)
+    return render_template_string(layout, content=inner)
 
 
 @myapp.route("/")
 def index():
-    return render_template_string(index_page, storage=storage)
+    projects = Project.query.order_by(Project.created.desc()).all()
+    content = """
+    <ul>
+      {% for p in projects %}
+        <li>
+          <a href="{{ url_for('project', pid=p.id) }}">{{ p.name }}</a>
+          [<a href="{{ url_for('delete_project', pid=p.id) }}">x</a>]
+        </li>
+      {% endfor %}
+    </ul>
+    <h2>Add Project</h2>
+    <form method="post" action="{{ url_for('add_project') }}">
+        <input name="name" placeholder="Project Name">
+        <button type="submit">Add</button>
+    </form>
+    """
+    return render_with_layout(content, projects=projects)
 
 
-@myapp.route("/items", methods=["POST"])
-def create_item():
-    data = request.get_json()
-    if not data or "data" not in data:
-        return jsonify({"error": "Missing required field: data"}), 400
-
-    new_item = Item(data=data["data"])
-    db.session.add(new_item)
-    db.session.commit()
-
-    return jsonify(new_item.to_dict()), 201
-
-
-@myapp.route("/items/<int:item_id>", methods=["GET"])
-def get_item(item_id):
-    item = Item.query.get(item_id)
-    if not item:
-        return jsonify({"error": "Item not found"}), 404
-
-    return jsonify(item.to_dict())
-
-
-@myapp.route("/items/<int:item_id>", methods=["POST"])
-def update_item(item_id):
-    item = Item.query.get(item_id)
-    if not item:
-        return jsonify({"error": "Item not found"}), 404
-
-    data = request.get_json()
-    if not data or "data" not in data:
-        return jsonify({"error": "Missing required field: data"}), 400
-
-    item.data = data["data"]
-    db.session.commit()
-
-    return jsonify(item.to_dict())
-
-
-@myapp.route("/view/<path:object_name>")
-def view(object_name):
-    obj = storage.get(object_name)
-    return render_template_string(view_page, obj=obj)
-
-
-@myapp.route("/upload", methods=["POST"])
-def upload():
-    try:
-        file = request.files.get("file")
-        # my_object = storage.upload(file)
-        # return redirect(url_for("view", object_name=my_object.name))
-        storage.upload(file)
-    except Exception:
-        pass
+@myapp.route("/add_project", methods=["POST"])
+def add_project():
+    name = request.form["name"]
+    if name.strip():
+        db.session.add(Project(name=name))
+        db.session.commit()
     return redirect(url_for("index"))
 
 
-@myapp.route("/hginit/<string:dest>")
+@myapp.route("/delete_project/<int:pid>")
+def delete_project(pid):
+    proj = Project.query.get_or_404(pid)
+    db.session.delete(proj)
+    db.session.commit()
+    return redirect(url_for("index"))
+
+
+@myapp.route("/project/<int:pid>")
+def project(pid):
+    proj = Project.query.get_or_404(pid)
+    tasks = Task.query.filter_by(project_id=pid).order_by(Task.created.desc()).all()
+    content = """
+    <a href="{{ url_for('index') }}">← Back</a>
+    <h2>{{ proj.name }}</h2>
+    <ul>
+      {% for t in tasks %}
+        <li>{{ '✓' if t.done else '✗' }} {{ t.title }}
+          [<a href="{{ url_for('toggle_task', tid=t.id) }}">Toggle</a>]
+          [<a href="{{ url_for('delete_task', tid=t.id) }}">x</a>]
+        </li>
+      {% endfor %}
+    </ul>
+    <h3>Add Task</h3>
+    <form method="post" action="{{ url_for('add_task', pid=proj.id) }}">
+        <input name="title" placeholder="Task title">
+        <button type="submit">Add</button>
+    </form>
+    """
+    return render_with_layout(content, proj=proj, tasks=tasks)
+
+
+@myapp.route("/add_task/<int:pid>", methods=["POST"])
+def add_task(pid):
+    title = request.form["title"]
+    if title.strip():
+        db.session.add(Task(project_id=pid, title=title))
+        db.session.commit()
+    return redirect(url_for("project", pid=pid))
+
+
+@myapp.route("/toggle_task/<int:tid>")
+def toggle_task(tid):
+    task = Task.query.get_or_404(tid)
+    task.done = not task.done
+    db.session.commit()
+    return redirect(url_for("project", pid=task.project_id))
+
+
+@myapp.route("/delete_task/<int:tid>")
+def delete_task(tid):
+    task = Task.query.get_or_404(tid)
+    pid = task.project_id
+    db.session.delete(task)
+    db.session.commit()
+    return redirect(url_for("project", pid=pid))
+
+
+with myapp.app_context():
+    # db.drop_all()
+    db.create_all()
+
+
+@myapp.route("/api/hginit/<string:dest>")
 def api_hginit(dest):
     commands.init(hgapp.ui, str.encode(os.path.join(repo_folder, dest)))
     hgapp.refresh()
     return dest
 
 
-@myapp.route("/rm/<string:dest>")
+@myapp.route("/api/rm/<string:dest>")
 def api_rm(dest):
     shutil.rmtree(os.path.join(repo_folder, dest), ignore_errors=True)
     hgapp.refresh()
     return dest
 
 
-application = DispatcherMiddleware(
-    Response(default_page, status=200, headers={"Content-Type": "text/html"}),
-    {"/hg": hgapp, "/my": myapp},
-)
-application = BasicAuth(application)
+application = BasicAuth(DispatcherMiddleware(myapp, {"/hg": hgapp}))
 
 # if __name__ == "__main__":
 #     run_simple("0.0.0.0", 8080, application, use_debugger=True)
