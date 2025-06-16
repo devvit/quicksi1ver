@@ -1,5 +1,6 @@
-Flask-SQLAlchemy
 Flask
+Flask-SQLAlchemy
+Flask-Turbolinks
 PyMySQL
 Pygments
 fasteners

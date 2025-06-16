@@ -13,6 +13,7 @@ import shutil
 import os
 from dotenv import load_dotenv
 from flask import render_template_string
+from flask_turbolinks import turbolinks
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
@@ -57,6 +58,7 @@ with open(config, "w") as f:
 
 hgapp = hgweb(config)
 myapp = Flask(__name__)
+turbolinks(myapp)
 myapp.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DB_URI")
 db = SQLAlchemy(myapp)
 
@@ -84,12 +86,13 @@ def render_with_layout(content, **context):
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Project Manager</title>
-    <link href="https://testingcf.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous">
+    <link href="https://testingcf.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://testingcf.jsdelivr.net/npm/turbolinks@5.2.0/dist/turbolinks.min.js"></script>
     </head>
     <body>
       <h1>🗂 Project Manager<sup>
-      <a href="/">HOME</a>
-      <a href="/hg">HG</a>
+      <a href="/" data-turbolinks="false">HOME</a>
+      <a href="/hg" data-turbolinks="false">HG</a>
       </sup></h1>
       {{ content|safe }}
     </body></html>
