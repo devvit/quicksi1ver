@@ -74,6 +74,7 @@ class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey("project.id"), nullable=False)
     title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.TEXT, nullable=True)
     done = db.Column(db.Boolean, default=False)
     created = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -88,13 +89,16 @@ def render_with_layout(content, **context):
     <title>Project Manager</title>
     <link href="https://testingcf.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://testingcf.jsdelivr.net/npm/turbolinks@5.2.0/dist/turbolinks.min.js"></script>
+    <script src="https://testingcf.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
     </head>
     <body>
       <h1>🗂 Project Manager<sup>
       <a href="/" data-turbolinks="false">HOME</a>
       <a href="/hg" data-turbolinks="false">HG</a>
       </sup></h1>
+      <div class="container-fluid">
       {{ content|safe }}
+      </div>
     </body></html>
     """
     inner = render_template_string(content, **context)
@@ -150,6 +154,7 @@ def project(pid):
       {% for t in tasks %}
         <li>{{ '✓' if t.done else '✗' }} {{ t.title }}
           [<a href="{{ url_for('toggle_task', tid=t.id) }}">Toggle</a>]
+          [<a href="{{ url_for('task_view', tid=t.id) }}">Edit</a>]
           [<a href="{{ url_for('delete_task', tid=t.id) }}">x</a>]
         </li>
       {% endfor %}
@@ -170,6 +175,48 @@ def add_task(pid):
         db.session.add(Task(project_id=pid, title=title))
         db.session.commit()
     return redirect(url_for("project", pid=pid))
+
+
+@myapp.route("/task/<int:tid>")
+def task_view(tid):
+    task = Task.query.get_or_404(tid)
+    content = """
+    <a href="{{ url_for('project', pid=task.project.id) }}">← Back to Project</a>
+    <p>
+    <button type="submit">Update</button><br>
+    </p>
+    <form method="post" action="{{ url_for('update_task', tid=task.id) }}">
+        <textarea id="content" name="content" cols="80" rows="20">{{ task.content }}</textarea><br>
+        <div id="html-preview" style="position:absolute; top: 100px; left: 720px;"></div>
+        <label>Title:</label><br>
+        <input name="title" value="{{ task.title }}"><br><br>
+        <label>Status:</label><br>
+        <select name="done">
+            <option value="0" {% if not task.done %}selected{% endif %}>Not Done</option>
+            <option value="1" {% if task.done %}selected{% endif %}>Done</option>
+        </select><br><br>
+    </form>
+    <script>
+        function preview() {
+            const markdownContent = document.getElementById('content').value;
+            const htmlPreview = document.getElementById('html-preview');
+            htmlPreview.innerHTML = marked.parse(markdownContent);
+        }
+        document.getElementById('content').addEventListener('input', preview);
+        preview();
+    </script>
+    """
+    return render_with_layout(content, task=task)
+
+
+@myapp.route("/update_task/<int:tid>", methods=["POST"])
+def update_task(tid):
+    task = Task.query.get_or_404(tid)
+    task.title = request.form["title"]
+    task.content = request.form["content"]
+    task.done = request.form.get("done") == "1"
+    db.session.commit()
+    return redirect(url_for("task_view", tid=tid))
 
 
 @myapp.route("/toggle_task/<int:tid>")
