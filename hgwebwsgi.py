@@ -92,12 +92,12 @@ def render_with_layout(content, **context):
     <script src="https://testingcf.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
     </head>
     <body>
-      <h1>🗂 Project Manager<sup>
-      <a href="/" data-turbolinks="false">HOME</a>
-      <a href="/hg" data-turbolinks="false">HG</a>
-      </sup></h1>
       <div class="container-fluid">
-      {{ content|safe }}
+          <h1>🗂 Project Manager<sup>
+          <a href="/" data-turbolinks="false">HOME</a>
+          <a href="/hg" data-turbolinks="false">HG</a>
+          </sup></h1>
+          {{ content|safe }}
       </div>
     </body></html>
     """
@@ -113,7 +113,7 @@ def index():
       {% for p in projects %}
         <li>
           <a href="{{ url_for('project', pid=p.id) }}">{{ p.name }}</a>
-          [<a href="{{ url_for('delete_project', pid=p.id) }}">x</a>]
+          [<a href="{{ url_for('delete_project', pid=p.id) }}" onclick="return confirm('Delete project?')">x</a>]
         </li>
       {% endfor %}
     </ul>
@@ -155,7 +155,7 @@ def project(pid):
         <li>{{ '✓' if t.done else '✗' }} {{ t.title }}
           [<a href="{{ url_for('toggle_task', tid=t.id) }}">Toggle</a>]
           [<a href="{{ url_for('task_view', tid=t.id) }}">Edit</a>]
-          [<a href="{{ url_for('delete_task', tid=t.id) }}">x</a>]
+          [<a href="{{ url_for('delete_task', tid=t.id) }}" onclick="return confirm('Delete task?')">x</a>]
         </li>
       {% endfor %}
     </ul>
@@ -182,11 +182,9 @@ def task_view(tid):
     task = Task.query.get_or_404(tid)
     content = """
     <a href="{{ url_for('project', pid=task.project.id) }}">← Back to Project</a>
-    <p>
-    <button type="submit">Update</button><br>
-    </p>
     <form method="post" action="{{ url_for('update_task', tid=task.id) }}">
-        <textarea id="content" name="content" cols="80" rows="20">{{ task.content }}</textarea><br>
+        <button type="submit">Update</button><br>
+        <textarea id="content" name="content" cols="80" rows="30">{{ task.content }}</textarea><br>
         <div id="html-preview" style="position:absolute; top: 100px; left: 720px;"></div>
         <label>Title:</label><br>
         <input name="title" value="{{ task.title }}"><br><br>
