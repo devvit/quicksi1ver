@@ -113,7 +113,7 @@ def index():
       {% for p in projects %}
         <li>
           <a href="{{ url_for('project', pid=p.id) }}">{{ p.name }}</a>
-          <span>{{ p.created }}</span>
+          <span>UTC {{ p.created }}</span>
           [<a href="{{ url_for('delete_project', pid=p.id) }}" onclick="return confirm('Delete project?')">x</a>]
         </li>
       {% endfor %}
@@ -156,7 +156,7 @@ def project(pid):
         <li>{{ '✓' if t.done else '✗' }} {{ t.title }}
           [<a href="{{ url_for('toggle_task', tid=t.id) }}">Toggle</a>]
           [<a href="{{ url_for('task_view', tid=t.id) }}">Edit</a>]
-          <span>{{ t.created }}</span>
+          <span>UTC {{ t.created }}</span>
           [<a href="{{ url_for('delete_task', tid=t.id) }}" onclick="return confirm('Delete task?')">x</a>]
         </li>
       {% endfor %}
