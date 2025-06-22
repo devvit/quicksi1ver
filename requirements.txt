@@ -6,4 +6,5 @@ Pygments
 fasteners
 mercurial
 python-dotenv
+sonyflake-py
 wsgi-basic-auth

@@ -14,6 +14,7 @@ import os
 from dotenv import load_dotenv
 from flask import render_template_string
 from flask_turbolinks import turbolinks
+from sonyflake import SonyFlake
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
@@ -61,20 +62,21 @@ myapp = Flask(__name__)
 turbolinks(myapp)
 myapp.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DB_URI")
 db = SQLAlchemy(myapp)
+sf = SonyFlake()
 
 
 class Project(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    id = db.Column(db.BigInteger, primary_key=True, default=sf.next_id)
+    name = db.Column(db.Text, nullable=False)
     created = db.Column(db.DateTime, default=datetime.utcnow)
     tasks = db.relationship("Task", backref="project", cascade="all, delete-orphan")
 
 
 class Task(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey("project.id"), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    content = db.Column(db.TEXT, nullable=True)
+    id = db.Column(db.BigInteger, primary_key=True, default=sf.next_id)
+    project_id = db.Column(db.BigInteger, db.ForeignKey("project.id"), nullable=False)
+    title = db.Column(db.Text, nullable=False)
+    content = db.Column(db.Text, nullable=True)
     done = db.Column(db.Boolean, default=False)
     created = db.Column(db.DateTime, default=datetime.utcnow)
 
