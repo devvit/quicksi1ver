@@ -17,54 +17,24 @@ from flask_turbolinks import turbolinks
 from sonyflake import SonyFlake
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-from base64 import b64decode
-from webob import Request
+
 
 class CustomBasicAuth(BasicAuth):
     """
-    扩展 BasicAuth，支持通过 HTTP Header 或 URL Query 参数进行认证。
-    URL 示例: http://example.com/protected?auth_user=admin&auth_pass=123
+    重写 BasicAuth，Query 优先级最高，没传则回退到父类。
     """
 
     def is_authorized(self, request):
-        """
-        重写授权校验逻辑：
-        1. 检查路径是否在包含/排除范围内
-        2. 优先检查标准的 HTTP Basic Header
-        3. 如果 Header 缺失或无效，降级检查 Query 参数
-        """
-        # 1. 依然借用父类的包含路径判断
-        if self._is_request_in_include_path(request):
-            # 2. 如果在排除路径内，直接放行
-            if self._is_request_in_exclude_path(request):
-                return True
+        # 1. 检查用户是否传了 Query 参数
+        username = request.GET.get('u')
+        password = request.GET.get('p')
 
-            # --- 策略 A: 先尝试走父类原本的 Header 认证 ---
-            auth = request.authorization
-            if auth and auth[0] == 'Basic':
-                try:
-                    credentials = b64decode(auth[1]).decode('UTF-8')
-                    username, password = credentials.split(':', 1)
-                    if self._users.get(username) == password:
-                        return True
-                except Exception:
-                    # 防止 Base64 解码或 split 出错导致程序崩溃
-                    pass
+        if username is not None or password is not None:
+            # 只要传了 query，就以 query 的验证结果为准
+            return self._users.get(username) == password
 
-            # --- 策略 B: 如果 Header 认证失败，尝试从 Query 参数中获取 ---
-            # 这里定义你想要的参数名，比如 auth_user 和 auth_pass
-            username = request.GET.get('u')
-            password = request.GET.get('p')
-
-            if username and password:
-                return self._users.get(username) == password
-
-            # 两种策略都失败，拒绝访问
-            return False
-
-        else:
-            # 不在包含路径内的，不需要认证
-            return True
+        # 2. 如果没传 query，直接交给父类（父类会自己判断路径包含/排除以及 Header）
+        return super(CustomBasicAuth, self).is_authorized(request)
 
 
 project_folder = os.path.expanduser("~/.hgweb")
