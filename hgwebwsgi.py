@@ -15,7 +15,6 @@ from dotenv import load_dotenv
 from flask import render_template_string
 from flask_turbolinks import turbolinks
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
 
 
 class CustomBasicAuth(BasicAuth):
