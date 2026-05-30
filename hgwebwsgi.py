@@ -14,7 +14,6 @@ import os
 from dotenv import load_dotenv
 from flask import render_template_string
 from flask_turbolinks import turbolinks
-from sonyflake import SonyFlake
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
@@ -26,8 +25,8 @@ class CustomBasicAuth(BasicAuth):
 
     def is_authorized(self, request):
         # 1. 检查用户是否传了 Query 参数
-        username = request.GET.get('u')
-        password = request.GET.get('p')
+        username = request.GET.get("u")
+        password = request.GET.get("p")
 
         if username is not None or password is not None:
             # 只要传了 query，就以 query 的验证结果为准
@@ -80,23 +79,6 @@ myapp = Flask(__name__)
 turbolinks(myapp)
 myapp.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DB_URI")
 db = SQLAlchemy(myapp)
-sf = SonyFlake()
-
-
-class Project(db.Model):
-    id = db.Column(db.BigInteger, primary_key=True, default=sf.next_id)
-    name = db.Column(db.Text, nullable=False)
-    created = db.Column(db.DateTime, default=datetime.utcnow)
-    tasks = db.relationship("Task", backref="project", cascade="all, delete-orphan")
-
-
-class Task(db.Model):
-    id = db.Column(db.BigInteger, primary_key=True, default=sf.next_id)
-    project_id = db.Column(db.BigInteger, db.ForeignKey("project.id"), nullable=False)
-    title = db.Column(db.Text, nullable=False)
-    content = db.Column(db.Text, nullable=True)
-    done = db.Column(db.Boolean, default=False)
-    created = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 def render_with_layout(content, **context):
@@ -127,133 +109,10 @@ def render_with_layout(content, **context):
 
 @myapp.route("/")
 def index():
-    projects = Project.query.order_by(Project.created.desc()).all()
     content = """
-    <ul>
-      {% for p in projects %}
-        <li>
-          <a href="{{ url_for('project', pid=p.id) }}">{{ p.name }}</a>
-          <span>UTC {{ p.created }}</span>
-          [<a href="{{ url_for('delete_project', pid=p.id) }}" onclick="return confirm('Delete project?')">x</a>]
-        </li>
-      {% endfor %}
-    </ul>
-    <h2>Add Project</h2>
-    <form method="post" action="{{ url_for('add_project') }}">
-        <input name="name" placeholder="Project Name">
-        <button type="submit">Add</button>
-    </form>
+    <h1>empty app</h1>
     """
-    return render_with_layout(content, projects=projects)
-
-
-@myapp.route("/add_project", methods=["POST"])
-def add_project():
-    name = request.form["name"]
-    if name.strip():
-        db.session.add(Project(name=name))
-        db.session.commit()
-    return redirect(url_for("index"))
-
-
-@myapp.route("/delete_project/<int:pid>")
-def delete_project(pid):
-    proj = Project.query.get_or_404(pid)
-    db.session.delete(proj)
-    db.session.commit()
-    return redirect(url_for("index"))
-
-
-@myapp.route("/project/<int:pid>")
-def project(pid):
-    proj = Project.query.get_or_404(pid)
-    tasks = Task.query.filter_by(project_id=pid).order_by(Task.created.desc()).all()
-    content = """
-    <a href="{{ url_for('index') }}">← Back</a>
-    <h2>{{ proj.name }}</h2>
-    <ul>
-      {% for t in tasks %}
-        <li>{{ '✓' if t.done else '✗' }} {{ t.title }}
-          [<a href="{{ url_for('toggle_task', tid=t.id) }}">Toggle</a>]
-          [<a href="{{ url_for('task_view', tid=t.id) }}">Edit</a>]
-          <span>UTC {{ t.created }}</span>
-          [<a href="{{ url_for('delete_task', tid=t.id) }}" onclick="return confirm('Delete task?')">x</a>]
-        </li>
-      {% endfor %}
-    </ul>
-    <h3>Add Task</h3>
-    <form method="post" action="{{ url_for('add_task', pid=proj.id) }}">
-        <input name="title" placeholder="Task title">
-        <button type="submit">Add</button>
-    </form>
-    """
-    return render_with_layout(content, proj=proj, tasks=tasks)
-
-
-@myapp.route("/add_task/<int:pid>", methods=["POST"])
-def add_task(pid):
-    title = request.form["title"]
-    if title.strip():
-        db.session.add(Task(project_id=pid, title=title))
-        db.session.commit()
-    return redirect(url_for("project", pid=pid))
-
-
-@myapp.route("/task/<int:tid>")
-def task_view(tid):
-    task = Task.query.get_or_404(tid)
-    content = """
-    <a href="{{ url_for('project', pid=task.project.id) }}">← Back to Project</a>
-    <form method="post" action="{{ url_for('update_task', tid=task.id) }}">
-        <button type="submit">Update</button><br>
-        <textarea id="content" name="content" cols="80" rows="30">{{ task.content }}</textarea><br>
-        <div id="html-preview" style="position:absolute; top: 100px; left: 720px;"></div>
-        <label>Title:</label><br>
-        <input name="title" value="{{ task.title }}"><br><br>
-        <label>Status:</label><br>
-        <select name="done">
-            <option value="0" {% if not task.done %}selected{% endif %}>Not Done</option>
-            <option value="1" {% if task.done %}selected{% endif %}>Done</option>
-        </select><br><br>
-    </form>
-    <script>
-        function preview() {
-            const markdownContent = document.getElementById('content').value;
-            const htmlPreview = document.getElementById('html-preview');
-            htmlPreview.innerHTML = marked.parse(markdownContent, {gfm: true});
-        }
-        document.getElementById('content').addEventListener('input', preview);
-        preview();
-    </script>
-    """
-    return render_with_layout(content, task=task)
-
-
-@myapp.route("/update_task/<int:tid>", methods=["POST"])
-def update_task(tid):
-    task = Task.query.get_or_404(tid)
-    task.title = request.form["title"]
-    task.content = request.form["content"]
-    task.done = request.form.get("done") == "1"
-    db.session.commit()
-    return redirect(url_for("task_view", tid=tid))
-
-
-@myapp.route("/toggle_task/<int:tid>")
-def toggle_task(tid):
-    task = Task.query.get_or_404(tid)
-    task.done = not task.done
-    db.session.commit()
-    return redirect(url_for("project", pid=task.project_id))
-
-
-@myapp.route("/delete_task/<int:tid>")
-def delete_task(tid):
-    task = Task.query.get_or_404(tid)
-    pid = task.project_id
-    db.session.delete(task)
-    db.session.commit()
-    return redirect(url_for("project", pid=pid))
+    return render_with_layout(content)
 
 
 with myapp.app_context():
